@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:14.10
+    environment:
+      POSTGRES_USER: flight_analyzer
+      POSTGRES_PASSWORD: flight_analyzer
+      POSTGRES_DB: flight_analyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - fa_postgres_data:/var/lib/postgresql/data
+
+  spark:
+    image: bitnami/spark:latest
+    environment:
+      SPARK_MODE: master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./api/data:/app/data
+    command: ["bin/spark-class", "org.apache.spark.deploy.master.Master"]
+  
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+    depends_on:
+      - spark
+    volumes:
+      - ./api/data:/app/data
+  
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - spark
+    volumes:
+      - ./api/data:/app/data
+    
+volumes:
+  fa_postgres_data:
