@@ -47,7 +47,7 @@ services:
       - spark
     restart: always
     volumes:
-      - ./api/data:/app/data
+      - ./api:/app
     
 volumes:
   fa_postgres_data:
