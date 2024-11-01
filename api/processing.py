@@ -33,6 +33,15 @@ oag_schema = StructType([
         StructField("sequenceNumber", IntegerType(), True),
         StructField("flightType", StringType(), True),
         
+        StructField("elapsedTime", IntegerType(), True),
+        StructField("aircraftType", StructType([          
+            StructField("iata", StringType(), True),
+            StructField("icao", StringType(), True)
+        ]), True),
+        StructField("serviceType", StructType([           
+            StructField("iata", StringType(), True)
+        ]), True),
+
         StructField("departure", StructType([
             StructField("airport", StructType([
                 StructField("iata", StringType(), True),
@@ -133,8 +142,9 @@ oag_schema = StructType([
     ])), True)
 ])
 
+
 jdbc_url = "jdbc:postgresql://db:5432/flight_analyzer"
-properties = {
+connection_properties = {
     "driver": "org.postgresql.Driver",
     "user": "flight_analyzer",
     "password": "flight_analyzer"
@@ -157,6 +167,7 @@ def process_data():
     exploded_df.cache()
 
     process_delay(exploded_df)
+    process_general_data(oag_df, adsb_df)
 
 
 def process_delay(exploded_df):
@@ -192,10 +203,30 @@ def process_delay(exploded_df):
         .format("jdbc") \
         .option("url", jdbc_url) \
         .option("dbtable", "delayed_flights") \
-        .options(**properties) \
+        .options(**connection_properties) \
         .partitionBy("departure_date") \
         .mode("append") \
         .save()
+
+
+def process_general_data(oag_df, adsb_df):
+    # Insert into airports table with optional fields handling
+    airports_df = oag_df.selectExpr(
+        "departure.airport.iata AS iata_code",
+        "departure.airport.icao AS icao_code",
+        "departure.airport.faa AS faa_code"
+    ).distinct()
+    
+    airports_df.write.jdbc(url=jdbc_url, table="airports", mode="append", properties=connection_properties)
+
+    # Insert into airlines table with optional fields handling
+    airlines_df = oag_df.selectExpr(
+        "carrier.iata AS iata_code",
+        "carrier.icao AS icao_code"
+    ).distinct()
+
+    airlines_df.write.jdbc(url=jdbc_url, table="airlines", mode="append", properties=connection_properties)
+
 
 def process():
     process_data()
