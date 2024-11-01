@@ -1,7 +1,7 @@
 from db import jdbc_url, connection_properties
 from schema import adsb_schema, oag_schema
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, sum as spark_sum, explode
+from pyspark.sql.functions import col, when, sum as spark_sum, explode, to_date, to_timestamp
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType
 
@@ -92,3 +92,16 @@ def process_general_data(oag_df, adsb_df):
     ).distinct()
 
     airlines_df.write.jdbc(url=jdbc_url, table="airlines", mode="append", properties=connection_properties)
+
+    # Insert into flights table with optional fields handling
+    flights_df = oag_df.select(
+        col("carrier.iata").alias("carrier_iata"),
+        col("flightNumber").alias("flight_number"),
+        col("departure.airport.iata").alias("departure_airport_iata"),
+        to_date(col("departure.date.local")).alias("departure_date_local"),
+        to_timestamp(col("departure.time.local"), "HH:mm").alias("departure_time_local"),
+        col("arrival.airport.iata").alias("arrival_airport_iata"),
+        to_date(col("arrival.date.local")).alias("arrival_date_local"),
+        to_timestamp(col("arrival.time.local"), "HH:mm").alias("arrival_time_local")
+    )
+    flights_df.write.jdbc(url=jdbc_url, table="flights", mode="append", properties=connection_properties)

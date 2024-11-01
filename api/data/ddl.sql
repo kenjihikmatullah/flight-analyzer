@@ -22,3 +22,15 @@ CREATE TABLE airlines (
     icao_code VARCHAR(16),
     name VARCHAR(100)
 );
+
+CREATE TABLE flights (
+    id SERIAL PRIMARY KEY,
+    carrier_iata VARCHAR(10),
+    flight_number INT,
+    departure_airport_iata VARCHAR(10),
+    departure_date_local DATE,
+    departure_time_local TIME,
+    arrival_airport_iata VARCHAR(10),
+    arrival_date_local DATE,
+    arrival_time_local TIME
+);
