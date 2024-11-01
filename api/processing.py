@@ -1,3 +1,4 @@
+import db
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, when, sum as spark_sum, explode
 from pyspark.sql import functions as F
@@ -142,12 +143,11 @@ oag_schema = StructType([
     ])), True)
 ])
 
-
-jdbc_url = "jdbc:postgresql://db:5432/flight_analyzer"
+jdbc_url = f"jdbc:postgresql://{db.DB_HOST}:{db.DB_PORT}/{db.DB_NAME}"
 connection_properties = {
     "driver": "org.postgresql.Driver",
-    "user": "flight_analyzer",
-    "password": "flight_analyzer"
+    "user": db.DB_USER,
+    "password": db.DB_PASSWORD
 }
 
 def process_data():
