@@ -6,6 +6,7 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 spark = SparkSession.builder \
     .appName("FlightDataProcessing") \
     .master("spark://spark:7077") \
+    .config("spark.jars.packages", "org.postgresql:postgresql:42.2.23") \
     .getOrCreate()
 
 # Define schemas for both JSON files
