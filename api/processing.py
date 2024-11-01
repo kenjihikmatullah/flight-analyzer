@@ -133,6 +133,13 @@ oag_schema = StructType([
     ])), True)
 ])
 
+jdbc_url = "jdbc:postgresql://db:5432/flight_analyzer"
+properties = {
+    "driver": "org.postgresql.Driver",
+    "user": "flight_analyzer",
+    "password": "flight_analyzer"
+}
+
 def process_data():
     # Load data from JSON files
     adsb_df = spark.read \
@@ -149,6 +156,10 @@ def process_data():
     # Cache exploded DataFrame if used multiple times
     exploded_df.cache()
 
+    process_delay(exploded_df)
+
+
+def process_delay(exploded_df):
     # Filter for delayed departures and arrivals
     delayed_departures = exploded_df.filter(
         F.col("statusDetails.departure.actualTime.outGateTimeliness") == "Delayed"
@@ -176,16 +187,7 @@ def process_data():
     # Display the result
     delays_df.show()
 
-    return delays_df
-
-def save_to_db(delays_df):
-    jdbc_url = "jdbc:postgresql://db:5432/flight_analyzer"
-    properties = {
-        "driver": "org.postgresql.Driver",
-        "user": "flight_analyzer",
-        "password": "flight_analyzer"
-    }
-
+    # write to DB
     delays_df.write \
         .format("jdbc") \
         .option("url", jdbc_url) \
@@ -196,7 +198,5 @@ def save_to_db(delays_df):
         .save()
 
 def process():
-    delays_df = process_data()
-    save_to_db(delays_df)
-
+    process_data()
     print("Processing complete. Results saved to the PostgreSQL database.")
