@@ -1,16 +1,28 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, when, sum as spark_sum, explode
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType, FloatType
 
 adsb_schema = StructType([
     StructField("AircraftId", StringType(), True),
+    StructField("Latitude", FloatType(), True),
+    StructField("Longitude", FloatType(), True),
+    StructField("Track", IntegerType(), True),
+    StructField("Altitude", IntegerType(), True),
+    StructField("Speed", IntegerType(), True),
+    StructField("Squawk", IntegerType(), True),
+    StructField("Type", StringType(), True),
+    StructField("Registration", StringType(), True),
+    StructField("LastUpdate", TimestampType(), True),
     StructField("Origin", StringType(), True),
     StructField("Destination", StringType(), True),
     StructField("Flight", StringType(), True),
     StructField("Onground", IntegerType(), True),
+    StructField("Vspeed", IntegerType(), True),
     StructField("Callsign", StringType(), True),
-    StructField("LastUpdate", TimestampType(), True),
+    StructField("SourceType", StringType(), True),
+    StructField("ETA", IntegerType(), True),
+    StructField("RadarId", StringType(), True)
 ])
 oag_schema = StructType([
     StructField("data", ArrayType(StructType([

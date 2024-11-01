@@ -34,3 +34,24 @@ CREATE TABLE flights (
     arrival_date_local DATE,
     arrival_time_local TIME
 );
+
+CREATE TABLE aircraft_positions (
+    id SERIAL PRIMARY KEY,
+    aircraft_id VARCHAR(50),
+    latitude FLOAT,
+    longitude FLOAT,
+    altitude INT,
+    speed INT,
+    track INT,
+    squawk INT,
+    type VARCHAR(10),
+    registration VARCHAR(20),
+    last_update TIMESTAMP,
+    origin VARCHAR(10),
+    destination VARCHAR(10),
+    flight VARCHAR(10),
+    onground BOOLEAN,
+    vspeed INT,
+    callsign VARCHAR(20)
+);
+

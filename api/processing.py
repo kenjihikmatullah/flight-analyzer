@@ -105,3 +105,24 @@ def process_general_data(oag_df, adsb_df):
         to_timestamp(col("arrival.time.local"), "HH:mm").alias("arrival_time_local")
     )
     flights_df.write.jdbc(url=jdbc_url, table="flights", mode="append", properties=connection_properties)
+
+    # Insert into aircraft_positions table with optional fields handling
+    positions_df = adsb_df.select(
+        col("AircraftId").alias("aircraft_id"),
+        col("Latitude").alias("latitude"),
+        col("Longitude").alias("longitude"),
+        col("Altitude").alias("altitude"),
+        col("Speed").alias("speed"),
+        col("Track").alias("track"),
+        col("Squawk").alias("squawk"),
+        col("Type").alias("type"),
+        col("Registration").alias("registration"),
+        col("LastUpdate").alias("last_update"),
+        col("Origin").alias("origin"),
+        col("Destination").alias("destination"),
+        col("Flight").alias("flight"),
+        col("Onground").cast("boolean").alias("onground"),
+        col("Vspeed").alias("vspeed"),
+        col("Callsign").alias("callsign")
+    )
+    positions_df.write.jdbc(url=jdbc_url, table="aircraft_positions", mode="append", properties=connection_properties)

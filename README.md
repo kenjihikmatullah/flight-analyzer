@@ -40,6 +40,6 @@ Beside, we also store the data in general that might be needed for future analys
 6. Inject sensitive information via environment variables
 
 ### Room for improvement
-1. Complete general data such as flights
+1. Improve general data that can be stored for future analysis, as well as maintain uniqueness of record
 2. Implement dependency injection (DI) for low-level implementation. For example, implement DI on database implementation so that we can easily change from PostgreSQL to another database in the future if needed
 3. Improve code cleanliness in general
