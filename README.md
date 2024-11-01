@@ -29,7 +29,7 @@ This API will return the analysis results which are already stored on DB
 
 ##### Store General Data
 Beside, we also store the data in general that might be needed for future analysis
-<img width="612" alt="Screenshot 2024-11-01 at 18 06 21" src="https://github.com/user-attachments/assets/c110bca9-4c89-4247-a2be-51f48882d6e9">
+<img width="1430" alt="Screenshot 2024-11-01 at 18 48 57" src="https://github.com/user-attachments/assets/6a3dd8e6-bc04-4e40-b925-f65d2b538faf">
 
 ### What have done
 1. Add functionality to process flight data and conduct simple analysis computing number of delayed flights by leveraging Apache Spark
