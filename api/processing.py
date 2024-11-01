@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, when, sum as spark_sum, explode
+from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType
 
 # Initialize Spark Session
@@ -140,26 +141,36 @@ def process_data():
         .json("/app/data/oag_multiple.json", schema=oag_schema) \
         .selectExpr("explode(data) as data") \
         .select("data.*")
- 
-    exploded_df = oag_df.withColumn("statusDetails", explode("statusDetails"))
+    
+    # Explode statusDetails array to access nested delay details
+    exploded_df = oag_df.withColumn("statusDetails", F.explode("statusDetails"))
+
+    # Filter for delayed departures and arrivals
     delayed_departures = exploded_df.filter(
-        col("statusDetails.departure.actualTime.outGateTimeliness") == "Delayed"
+        F.col("statusDetails.departure.actualTime.outGateTimeliness") == "Delayed"
+    ).select(
+        F.col("departure.date.utc").alias("departure_date")
     )
+    
     delayed_arrivals = exploded_df.filter(
-        col("statusDetails.arrival.actualTime.inGateTimeliness") == "Delayed"
+        F.col("statusDetails.arrival.actualTime.inGateTimeliness") == "Delayed"
+    ).select(
+        F.col("departure.date.utc").alias("departure_date")  # Assuming departure_date is same as departure date for arrivals
     )
-    delayed_departures.show()
-    delayed_arrivals.show()
 
-    # Count delayed flights by type
-    total_departure_delays = delayed_departures.count()
-    total_arrival_delays = delayed_arrivals.count()
+    # Aggregate delay counts by departure_date
+    departure_delay_counts = delayed_departures.groupBy("departure_date") \
+        .agg(F.count("*").alias("departure_delay_count"))
 
-    # Combine results into a single DataFrame for saving
-    delays_df = spark.createDataFrame([
-        ("departure", total_departure_delays),
-        ("arrival", total_arrival_delays)
-    ], ["DelayType", "TotalDelays"])
+    arrival_delay_counts = delayed_arrivals.groupBy("departure_date") \
+        .agg(F.count("*").alias("arrival_delay_count"))
+
+    # Join delay counts on departure_date to combine results
+    delays_df = departure_delay_counts.join(arrival_delay_counts, "departure_date", "outer") \
+        .fillna(0)  # Fill any missing delay counts with 0
+
+    # Display the result
+    delays_df.show()
 
     return delays_df
 

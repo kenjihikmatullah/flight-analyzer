@@ -1,4 +1,5 @@
 CREATE TABLE delayed_flights (
-    DelayType VARCHAR(50),
-    TotalDelays INT
+    departure_date DATE,
+    departure_delay_count INT,
+    arrival_delay_count INT
 );
