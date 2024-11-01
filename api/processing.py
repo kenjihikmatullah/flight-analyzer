@@ -1,4 +1,5 @@
-import db
+from db import jdbc_url, connection_properties
+from schema import adsb_schema, oag_schema
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, when, sum as spark_sum, explode
 from pyspark.sql import functions as F
@@ -13,144 +14,7 @@ spark = SparkSession.builder \
     .config("spark.sql.shuffle.partitions", "200") \
     .getOrCreate()
 
-# Define schemas for both JSON files
-adsb_schema = StructType([
-    StructField("AircraftId", StringType(), True),
-    StructField("Origin", StringType(), True),
-    StructField("Destination", StringType(), True),
-    StructField("Flight", StringType(), True),
-    StructField("Onground", IntegerType(), True),
-    StructField("Callsign", StringType(), True),
-    StructField("LastUpdate", TimestampType(), True),
-])
-oag_schema = StructType([
-    StructField("data", ArrayType(StructType([
-        StructField("flightNumber", IntegerType(), True),
-        StructField("carrier", StructType([
-            StructField("iata", StringType(), True),
-            StructField("icao", StringType(), True)
-        ]), True),
-        StructField("serviceSuffix", StringType(), True),
-        StructField("sequenceNumber", IntegerType(), True),
-        StructField("flightType", StringType(), True),
-        
-        StructField("elapsedTime", IntegerType(), True),
-        StructField("aircraftType", StructType([          
-            StructField("iata", StringType(), True),
-            StructField("icao", StringType(), True)
-        ]), True),
-        StructField("serviceType", StructType([           
-            StructField("iata", StringType(), True)
-        ]), True),
-
-        StructField("departure", StructType([
-            StructField("airport", StructType([
-                StructField("iata", StringType(), True),
-                StructField("icao", StringType(), True),
-                StructField("faa", StringType(), True)
-            ]), True),
-            StructField("terminal", StringType(), True),
-            StructField("date", StructType([
-                StructField("local", StringType(), True),
-                StructField("utc", StringType(), True)
-            ]), True),
-            StructField("time", StructType([
-                StructField("local", StringType(), True),
-                StructField("utc", StringType(), True)
-            ]), True),
-            StructField("actualTime", StructType([
-                StructField("outGateTimeliness", StringType(), True),
-                StructField("outGateVariation", StringType(), True),
-                StructField("outGate", StructType([
-                    StructField("local", StringType(), True),
-                    StructField("utc", StringType(), True)
-                ]), True),
-                StructField("offGround", StructType([
-                    StructField("local", StringType(), True),
-                    StructField("utc", StringType(), True)
-                ]), True)
-            ]), True)
-        ]), True),
-
-        StructField("arrival", StructType([
-            StructField("airport", StructType([
-                StructField("iata", StringType(), True),
-                StructField("icao", StringType(), True),
-                StructField("faa", StringType(), True)
-            ]), True),
-            StructField("terminal", StringType(), True),
-            StructField("date", StructType([
-                StructField("local", StringType(), True),
-                StructField("utc", StringType(), True)
-            ]), True),
-            StructField("time", StructType([
-                StructField("local", StringType(), True),
-                StructField("utc", StringType(), True)
-            ]), True),
-            StructField("actualTime", StructType([
-                StructField("inGateTimeliness", StringType(), True),
-                StructField("inGateVariation", StringType(), True),
-                StructField("inGate", StructType([
-                    StructField("local", StringType(), True),
-                    StructField("utc", StringType(), True)
-                ]), True),
-                StructField("onGround", StructType([
-                    StructField("local", StringType(), True),
-                    StructField("utc", StringType(), True)
-                ]), True)
-            ]), True)
-        ]), True),
-
-        StructField("statusDetails", ArrayType(StructType([
-            StructField("state", StringType(), True),
-            StructField("updatedAt", StringType(), True),
-            StructField("equipment", StructType([
-                StructField("aircraftRegistrationNumber", StringType(), True),
-                StructField("actualAircraftType", StructType([
-                    StructField("iata", StringType(), True),
-                    StructField("icao", StringType(), True)
-                ]), True)
-            ]), True),
-            StructField("departure", StructType([
-                StructField("actualTime", StructType([
-                    StructField("outGateTimeliness", StringType(), True),
-                    StructField("outGateVariation", StringType(), True),
-                    StructField("outGate", StructType([
-                        StructField("local", StringType(), True),
-                        StructField("utc", StringType(), True)
-                    ]), True),
-                    StructField("offGround", StructType([
-                        StructField("local", StringType(), True),
-                        StructField("utc", StringType(), True)
-                    ]), True)
-                ]), True)
-            ]), True),
-            StructField("arrival", StructType([
-                StructField("actualTime", StructType([
-                    StructField("inGateTimeliness", StringType(), True),
-                    StructField("inGateVariation", StringType(), True),
-                    StructField("inGate", StructType([
-                        StructField("local", StringType(), True),
-                        StructField("utc", StringType(), True)
-                    ]), True),
-                    StructField("onGround", StructType([
-                        StructField("local", StringType(), True),
-                        StructField("utc", StringType(), True)
-                    ]), True)
-                ]), True)
-            ]), True)
-        ])), True)
-    ])), True)
-])
-
-jdbc_url = f"jdbc:postgresql://{db.DB_HOST}:{db.DB_PORT}/{db.DB_NAME}"
-connection_properties = {
-    "driver": "org.postgresql.Driver",
-    "user": db.DB_USER,
-    "password": db.DB_PASSWORD
-}
-
-def process_data():
+def process():
     # Load data from JSON files
     adsb_df = spark.read \
         .option("multiline", "true") \
@@ -168,6 +32,8 @@ def process_data():
 
     process_delay(exploded_df)
     process_general_data(oag_df, adsb_df)
+
+    print("Processing complete. Results saved to the PostgreSQL database.")
 
 
 def process_delay(exploded_df):
@@ -226,8 +92,3 @@ def process_general_data(oag_df, adsb_df):
     ).distinct()
 
     airlines_df.write.jdbc(url=jdbc_url, table="airlines", mode="append", properties=connection_properties)
-
-
-def process():
-    process_data()
-    print("Processing complete. Results saved to the PostgreSQL database.")
