@@ -4,10 +4,12 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType
 
 # Initialize Spark Session
+# partitions can be adjusted accordingly
 spark = SparkSession.builder \
     .appName("FlightDataProcessing") \
     .master("spark://spark:7077") \
     .config("spark.jars.packages", "org.postgresql:postgresql:42.2.23") \
+    .config("spark.sql.shuffle.partitions", "200") \
     .getOrCreate()
 
 # Define schemas for both JSON files
@@ -144,6 +146,8 @@ def process_data():
     
     # Explode statusDetails array to access nested delay details
     exploded_df = oag_df.withColumn("statusDetails", F.explode("statusDetails"))
+    # Cache exploded DataFrame if used multiple times
+    exploded_df.cache()
 
     # Filter for delayed departures and arrivals
     delayed_departures = exploded_df.filter(
@@ -151,7 +155,7 @@ def process_data():
     ).select(
         F.col("departure.date.utc").alias("departure_date")
     )
-    
+
     delayed_arrivals = exploded_df.filter(
         F.col("statusDetails.arrival.actualTime.inGateTimeliness") == "Delayed"
     ).select(
@@ -187,7 +191,8 @@ def save_to_db(delays_df):
         .option("url", jdbc_url) \
         .option("dbtable", "delayed_flights") \
         .options(**properties) \
-        .mode("overwrite") \
+        .partitionBy("departure_date") \
+        .mode("append") \
         .save()
 
 def process():
