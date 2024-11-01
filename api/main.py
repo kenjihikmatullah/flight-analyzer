@@ -10,6 +10,10 @@ app = FastAPI()
 async def process_data():
     try:
         process()
+        return {
+            "success": True,
+            "message": "Data processing complete."
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -17,6 +21,9 @@ async def process_data():
 async def get_analysis_results():
     try:
         results = get_analysis_results()
-        return {"results": results}
+        return {
+            "success": True,
+            "results": results
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, sum as spark_sum
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
+from pyspark.sql.functions import col, when, sum as spark_sum, explode
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType, ArrayType
 
 # Initialize Spark Session
 spark = SparkSession.builder \
@@ -19,40 +19,115 @@ adsb_schema = StructType([
     StructField("Callsign", StringType(), True),
     StructField("LastUpdate", TimestampType(), True),
 ])
-
 oag_schema = StructType([
-    StructField("flightNumber", IntegerType(), True),
-    StructField("carrier", StructType([
-        StructField("iata", StringType(), True),
-    ]), True),
-    StructField("departure", StructType([
-        StructField("airport", StructType([
-            StructField("iata", StringType(), True)
+    StructField("data", ArrayType(StructType([
+        StructField("flightNumber", IntegerType(), True),
+        StructField("carrier", StructType([
+            StructField("iata", StringType(), True),
+            StructField("icao", StringType(), True)
         ]), True),
-        StructField("date", StructType([
-            StructField("utc", StringType(), True)
+        StructField("serviceSuffix", StringType(), True),
+        StructField("sequenceNumber", IntegerType(), True),
+        StructField("flightType", StringType(), True),
+        
+        StructField("departure", StructType([
+            StructField("airport", StructType([
+                StructField("iata", StringType(), True),
+                StructField("icao", StringType(), True),
+                StructField("faa", StringType(), True)
+            ]), True),
+            StructField("terminal", StringType(), True),
+            StructField("date", StructType([
+                StructField("local", StringType(), True),
+                StructField("utc", StringType(), True)
+            ]), True),
+            StructField("time", StructType([
+                StructField("local", StringType(), True),
+                StructField("utc", StringType(), True)
+            ]), True),
+            StructField("actualTime", StructType([
+                StructField("outGateTimeliness", StringType(), True),
+                StructField("outGateVariation", StringType(), True),
+                StructField("outGate", StructType([
+                    StructField("local", StringType(), True),
+                    StructField("utc", StringType(), True)
+                ]), True),
+                StructField("offGround", StructType([
+                    StructField("local", StringType(), True),
+                    StructField("utc", StringType(), True)
+                ]), True)
+            ]), True)
         ]), True),
-        StructField("time", StructType([
-            StructField("utc", StringType(), True)
+
+        StructField("arrival", StructType([
+            StructField("airport", StructType([
+                StructField("iata", StringType(), True),
+                StructField("icao", StringType(), True),
+                StructField("faa", StringType(), True)
+            ]), True),
+            StructField("terminal", StringType(), True),
+            StructField("date", StructType([
+                StructField("local", StringType(), True),
+                StructField("utc", StringType(), True)
+            ]), True),
+            StructField("time", StructType([
+                StructField("local", StringType(), True),
+                StructField("utc", StringType(), True)
+            ]), True),
+            StructField("actualTime", StructType([
+                StructField("inGateTimeliness", StringType(), True),
+                StructField("inGateVariation", StringType(), True),
+                StructField("inGate", StructType([
+                    StructField("local", StringType(), True),
+                    StructField("utc", StringType(), True)
+                ]), True),
+                StructField("onGround", StructType([
+                    StructField("local", StringType(), True),
+                    StructField("utc", StringType(), True)
+                ]), True)
+            ]), True)
         ]), True),
-        StructField("actualTime", StructType([
-            StructField("outGateTimeliness", StringType(), True),
-        ]), True)
-    ]), True),
-    StructField("arrival", StructType([
-        StructField("airport", StructType([
-            StructField("iata", StringType(), True)
-        ]), True),
-        StructField("date", StructType([
-            StructField("utc", StringType(), True)
-        ]), True),
-        StructField("time", StructType([
-            StructField("utc", StringType(), True)
-        ]), True),
-        StructField("actualTime", StructType([
-            StructField("inGateTimeliness", StringType(), True),
-        ]), True)
-    ]), True),
+
+        StructField("statusDetails", ArrayType(StructType([
+            StructField("state", StringType(), True),
+            StructField("updatedAt", StringType(), True),
+            StructField("equipment", StructType([
+                StructField("aircraftRegistrationNumber", StringType(), True),
+                StructField("actualAircraftType", StructType([
+                    StructField("iata", StringType(), True),
+                    StructField("icao", StringType(), True)
+                ]), True)
+            ]), True),
+            StructField("departure", StructType([
+                StructField("actualTime", StructType([
+                    StructField("outGateTimeliness", StringType(), True),
+                    StructField("outGateVariation", StringType(), True),
+                    StructField("outGate", StructType([
+                        StructField("local", StringType(), True),
+                        StructField("utc", StringType(), True)
+                    ]), True),
+                    StructField("offGround", StructType([
+                        StructField("local", StringType(), True),
+                        StructField("utc", StringType(), True)
+                    ]), True)
+                ]), True)
+            ]), True),
+            StructField("arrival", StructType([
+                StructField("actualTime", StructType([
+                    StructField("inGateTimeliness", StringType(), True),
+                    StructField("inGateVariation", StringType(), True),
+                    StructField("inGate", StructType([
+                        StructField("local", StringType(), True),
+                        StructField("utc", StringType(), True)
+                    ]), True),
+                    StructField("onGround", StructType([
+                        StructField("local", StringType(), True),
+                        StructField("utc", StringType(), True)
+                    ]), True)
+                ]), True)
+            ]), True)
+        ])), True)
+    ])), True)
 ])
 
 def process_data():
@@ -62,11 +137,19 @@ def process_data():
         .json("/app/data/adsb_multi_aircraft.json", schema=adsb_schema)
     oag_df = spark.read \
         .option("multiline", "true") \
-        .json("/app/data/oag_multiple.json", schema=oag_schema)
-
-    # Filter for delayed flights in the OAG dataset
-    delayed_departures = oag_df.filter(col("departure.actualTime.outGateTimeliness") == "Delayed")
-    delayed_arrivals = oag_df.filter(col("arrival.actualTime.inGateTimeliness") == "Delayed")
+        .json("/app/data/oag_multiple.json", schema=oag_schema) \
+        .selectExpr("explode(data) as data") \
+        .select("data.*")
+ 
+    exploded_df = oag_df.withColumn("statusDetails", explode("statusDetails"))
+    delayed_departures = exploded_df.filter(
+        col("statusDetails.departure.actualTime.outGateTimeliness") == "Delayed"
+    )
+    delayed_arrivals = exploded_df.filter(
+        col("statusDetails.arrival.actualTime.inGateTimeliness") == "Delayed"
+    )
+    delayed_departures.show()
+    delayed_arrivals.show()
 
     # Count delayed flights by type
     total_departure_delays = delayed_departures.count()
