@@ -80,13 +80,18 @@ def process_data():
     return delays_df
 
 def save_to_db(delays_df):
-    db_url = "jdbc:postgresql://db:5432/flight_analyzer"
+    jdbc_url = "jdbc:postgresql://db:5432/flight_analyzer"
+    properties = {
+        "driver": "org.postgresql.Driver",
+        "user": "flight_analyzer",
+        "password": "flight_analyzer"
+    }
+
     delays_df.write \
         .format("jdbc") \
-        .option("url", db_url) \
-        .option("dbtable", "flight_delays") \
-        .option("user", "flight_analyzer") \
-        .option("password", "flight_analyzer") \
+        .option("url", jdbc_url) \
+        .option("dbtable", "delayed_flights") \
+        .options(**properties) \
         .mode("overwrite") \
         .save()
 

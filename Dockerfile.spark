@@ -1,0 +1,3 @@
+FROM bitnami/spark:3.5.1
+
+# any files/libraries needed on the cluster could be installed here
