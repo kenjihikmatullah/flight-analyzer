@@ -61,6 +61,9 @@ def process_delay(exploded_df):
     delays_df = departure_delay_counts.join(arrival_delay_counts, "departure_date", "outer") \
         .fillna(0)  # Fill any missing delay counts with 0
 
+    # cast to date
+    delays_df = delays_df.withColumn("departure_date", F.to_date(F.col("departure_date")))
+
     # Display the result
     delays_df.show()
 
